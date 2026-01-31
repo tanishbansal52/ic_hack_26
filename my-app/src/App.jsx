@@ -14,7 +14,7 @@ function App() {
       <h1>Module Selection Helper</h1>
       <p>Select a module to see if attendance actually matters.</p>
       
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px' }}>
         {modules.map(mod => (
           <ModuleCard key={mod.id} module={mod} />
         ))}
