@@ -1,3 +1,9 @@
+DROP TABLE IF EXISTS attendance_logs CASCADE;
+DROP TABLE IF EXISTS grades CASCADE;
+DROP TABLE IF EXISTS lectures CASCADE;
+DROP TABLE IF EXISTS modules CASCADE;
+DROP TABLE IF EXISTS students CASCADE;
+
 -- 1. Students (Biometric Data Only)
 CREATE TABLE students (
     student_id INT PRIMARY KEY, -- CID
