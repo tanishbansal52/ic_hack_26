@@ -1,10 +1,13 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
+from config import BASE_DIR
 
-app = Flask(__name__)
+import os
+
+app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "my-app"))
 
 @app.route("/")
 def home():
-    return jsonify({"message": "Flask backend is running"})
+    return render_template("index.html")
 
 @app.route("/api/hello", methods=["GET"])
 def hello():
