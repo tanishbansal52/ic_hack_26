@@ -7,6 +7,11 @@ from ultralytics import YOLO
 from insightface.app import FaceAnalysis
 import mediapipe as mp
 
+import sqlite3
+import sqlite_vec
+import struct
+
+
 
 # ======================
 # CONFIG
@@ -141,31 +146,87 @@ def simple_head_forward_ratio(pts):
 # ======================
 # Identity matching
 # ======================
-def match_or_create_identity(face_emb, people, next_id):
+def match_or_create_identity(face_emb):
     e = l2norm(face_emb.astype(np.float32))
 
     best_person = None
     best_s = -1.0
 
-    for p in people:
-        if not p["embs"]:
-            continue
-        s = max(cos_sim(e, emb) for emb in p["embs"])
-        if s > best_s:
-            best_s = s
-            best_person = p
+    # for p in people:
+    #     if not p["embs"]:
+    #         continue
+    #     s = max(cos_sim(e, emb) for emb in p["embs"])
+    #     if s > best_s:
+    #         best_s = s
+    #         best_person = p
+
+    
+    db = sqlite3.connect("database.db")
+    db.enable_load_extension(True)
+    sqlite_vec.load(db)
+    db.enable_load_extension(False) # Best practice: disable after loading
+
+    cur = db.cursor()
+
+    embedding_bytes = struct.pack(f'{len(face_emb)}f', *face_emb)
+    query = """
+    SELECT rowid, embedding
+    FROM people_vectors
+    ORDER BY embedding <-> ?
+    LIMIT 1
+    """
+    result = cur.execute(query, (embedding_bytes,)).fetchone()
+
+    if result:
+        person_id, person_embedding_bytes = result
+        person_embedding = np.array(struct.unpack(f'{len(face_emb)}f', person_embedding_bytes), dtype=np.float32)
+        # Calculate cosine similarity
+        dot_product = np.dot(face_emb, person_embedding)
+        norm_embedding = np.linalg.norm(face_emb)
+        norm_person = np.linalg.norm(person_embedding)
+        cosine_similarity = dot_product / (norm_embedding * norm_person)
+        best_person = person_id
+        best_s = cosine_similarity
+
+    
+    
 
     if best_person is not None and best_s >= COSINE_THRESH:
+        # get the user id given the row id
+        cur.execute("SELECT id FROM people WHERE embedding_row_id = ?", (best_person,))
+        row = cur.fetchone()
+        if row is None:
+            raise RuntimeError("Inconsistent DB state: embedding found but no corresponding person ID.")
+        best_person = row[0]
+
         # Add some variety, but cap it
         if all(cos_sim(e, emb) < 0.98 for emb in best_person["embs"]):
             best_person["embs"].append(e)
             if len(best_person["embs"]) > 12:
                 best_person["embs"] = best_person["embs"][-12:]
-        return best_person["id"], next_id, best_s, False
+        cur.close()
+        db.commit()
+        return best_person, best_s, False
 
-    pid = next_id
-    people.append({"id": pid, "embs": [e]})
-    return pid, next_id + 1, best_s, True
+    # insert into the db
+    cursor = db.execute("INSERT INTO people_vectors(embedding) VALUES (?)", (embedding_bytes,))
+    embedding_id = cursor.lastrowid  # Get the auto-generated rowid
+
+    db.execute("""
+        SELECT max(id) FROM people
+    """)
+
+    row = cur.fetchone()
+    next_id = 1 if row[0] is None else row[0] + 1
+
+    db.execute("""
+        INSERT INTO people
+        (id, embedding_row_id) VALUES (?, ?)
+    """, (next_id, embedding_id))
+
+    cur.close()
+    db.commit()
+    return next_id, best_s, True
 
 
 # ======================
@@ -187,8 +248,8 @@ def main():
         min_tracking_confidence=0.3,
     )
 
-    people, next_id = load_db(DB_PATH)
-    print(f"Loaded {len(people)} saved identities from {DB_PATH}. Next id={next_id}")
+    # people, next_id = load_db(DB_PATH)
+    # print(f"Loaded {len(people)} saved identities from {DB_PATH}. Next id={next_id}")
 
     # Per-identity state for attention
     # state[pid] = {"closed_since": t or None, "last_attentive": 0/1/None, "last_update": t}
@@ -298,7 +359,7 @@ def main():
                 if iff is None:
                     pid = None
                 else:
-                    pid, next_id, sim, was_new = match_or_create_identity(iff["emb"], people, next_id)
+                    pid, next_id, sim, was_new = match_or_create_identity(iff["emb"])
 
                 attentive = None
 
