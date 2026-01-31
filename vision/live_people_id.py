@@ -1,16 +1,11 @@
-import os
 import time
 import cv2
 import numpy as np
+import sqlite3
 
 from ultralytics import YOLO
 from insightface.app import FaceAnalysis
 import mediapipe as mp
-
-import sqlite3
-import sqlite_vec
-import struct
-
 
 
 # ======================
@@ -18,75 +13,183 @@ import struct
 # ======================
 CAM_INDEX = 0
 
-# People detection (counting)
+# People detection
 YOLO_MODEL = "yolov8n.pt"
 PERSON_CONF = 0.35
 
-# Face recognition (identity)
+# Face recognition
 FACE_DET_SIZE = (640, 640)
-COSINE_THRESH = 0.50              # stricter => fewer false matches (0.45–0.60 typical)
-DB_PATH = "faces_db.npz"
+COSINE_THRESH = 0.50          # stricter => fewer false matches (0.45–0.60 typical)
+MAX_EMBS_PER_PERSON = 12      # cap samples per person (keeps DB small)
 
-# Face/landmark quality gates
-MIN_FACE_AREA = 40 * 40           # lower => works when you are further away; raise later for stability
+# SQLite
+SQLITE_PATH = "database.db"
+
+# Face / landmark reliability
+MIN_FACE_AREA = 40 * 40
 
 # Attention (binary)
-EAR_CLOSED_THRESH = 0.20          # if false "closed": lower to 0.18; if never closed: raise to 0.22
-EYES_CLOSED_LONG_SEC = 1.0        # closed this long => inattentive
-NOSE_CENTER_RATIO_THRESH = 0.17   # smaller => stricter "forward". Typical 0.12–0.22
+EAR_CLOSED_THRESH = 0.20
+EYES_CLOSED_LONG_SEC = 1.0
+NOSE_CENTER_RATIO_THRESH = 0.17  # 0.12–0.22 typical
+
+# Pairing IF (InsightFace) faces to MP (MediaPipe) faces
+MIN_IOU_MATCH = 0.10
 
 # Debug
 SHOW_DEBUG_OVERLAY = True
-PRINT_DEBUG_EVERY_N_FRAMES = 30   # set 0 to disable terminal prints
+PRINT_DEBUG_EVERY_N_FRAMES = 30  # 0 disables
 
 
 # ======================
-# Persistence (save/load identities)
+# DB + Embedding Store
 # ======================
-def save_db(path, people, next_id):
-    ids = np.array([p["id"] for p in people], dtype=np.int32)
-    embs = np.array([np.stack(p["embs"]) for p in people], dtype=object)
-    np.savez_compressed(path, ids=ids, embs=embs, next_id=np.int32(next_id))
+def init_db(db: sqlite3.Connection):
+    cur = db.cursor()
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS people (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at REAL DEFAULT (strftime('%s','now'))
+    )
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS people_embeddings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        person_id INTEGER NOT NULL,
+        embedding BLOB NOT NULL,
+        created_at REAL DEFAULT (strftime('%s','now')),
+        FOREIGN KEY(person_id) REFERENCES people(id)
+    )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_people_embeddings_person ON people_embeddings(person_id)")
+    db.commit()
 
 
-def load_db(path):
-    if not os.path.exists(path):
-        return [], 1
+def count_people(db: sqlite3.Connection) -> int:
+    cur = db.cursor()
+    cur.execute("SELECT COUNT(*) FROM people")
+    return int(cur.fetchone()[0])
 
-    data = np.load(path, allow_pickle=True)
 
-    # Backward compatible: some older files might not have next_id
-    if "next_id" in data:
-        next_id = int(data["next_id"])
-    else:
-        ids_arr = data["ids"] if "ids" in data else np.array([], dtype=np.int32)
-        next_id = (int(np.max(ids_arr)) + 1) if len(ids_arr) > 0 else 1
+def clear_people(db: sqlite3.Connection):
+    cur = db.cursor()
+    cur.execute("DELETE FROM people_embeddings")
+    cur.execute("DELETE FROM people")
+    db.commit()
 
-    people = []
-    if "ids" in data and "embs" in data:
-        for pid, e in zip(data["ids"], data["embs"]):
-            people.append({"id": int(pid), "embs": [x.astype(np.float32) for x in e]})
 
-    return people, next_id
+class EmbeddingStore:
+    """
+    Keeps a RAM cache of normalized embeddings for fast matching,
+    while persisting everything to SQLite.
+    """
+
+    def __init__(self, db: sqlite3.Connection):
+        self.db = db
+        self.person_ids: list[int] = []
+        self.embs: list[np.ndarray] = []  # normalized float32 (512,)
+        self._load_all()
+
+    @staticmethod
+    def _l2norm(v: np.ndarray) -> np.ndarray:
+        v = v.astype(np.float32)
+        return v / (np.linalg.norm(v) + 1e-9)
+
+    def _load_all(self):
+        self.person_ids.clear()
+        self.embs.clear()
+
+        cur = self.db.cursor()
+        cur.execute("SELECT person_id, embedding FROM people_embeddings")
+        for pid, blob in cur.fetchall():
+            emb = np.frombuffer(blob, dtype=np.float32)
+            if emb.size == 0:
+                continue
+            self.person_ids.append(int(pid))
+            # assume stored already normalized; if not, normalize again safely:
+            self.embs.append(self._l2norm(emb))
+
+    def _insert_embedding(self, person_id: int, emb_norm: np.ndarray):
+        blob = emb_norm.astype(np.float32).tobytes()
+        cur = self.db.cursor()
+        cur.execute(
+            "INSERT INTO people_embeddings(person_id, embedding) VALUES (?, ?)",
+            (int(person_id), sqlite3.Binary(blob)),
+        )
+        self.db.commit()
+
+        # RAM cache update
+        self.person_ids.append(int(person_id))
+        self.embs.append(emb_norm)
+
+    def _trim_person_embeddings(self, person_id: int, max_keep: int):
+        # Keep only newest N embeddings per person
+        cur = self.db.cursor()
+        cur.execute("""
+            SELECT id FROM people_embeddings
+            WHERE person_id = ?
+            ORDER BY id DESC
+        """, (int(person_id),))
+        ids = [row[0] for row in cur.fetchall()]
+        if len(ids) <= max_keep:
+            return
+        to_delete = ids[max_keep:]
+        cur.executemany("DELETE FROM people_embeddings WHERE id = ?", [(i,) for i in to_delete])
+        self.db.commit()
+
+        # Refresh RAM cache (simple + safe)
+        self._load_all()
+
+    def match_or_create(self, face_emb: np.ndarray) -> tuple[int, float, bool]:
+        """
+        Returns: (person_id, best_similarity, was_new)
+        """
+        emb_norm = self._l2norm(face_emb)
+
+        if len(self.embs) == 0:
+            # new person
+            pid = self._create_new_person()
+            self._insert_embedding(pid, emb_norm)
+            return pid, -1.0, True
+
+        # Cosine similarity since everything is normalized:
+        # cos(a,b) = dot(a,b)
+        dots = [float(np.dot(emb_norm, e)) for e in self.embs]
+        best_idx = int(np.argmax(dots))
+        best_s = float(dots[best_idx])
+        best_pid = int(self.person_ids[best_idx])
+
+        if best_s >= COSINE_THRESH:
+            # add sample if not near-duplicate vs that person's existing embeddings
+            # quick check: if any same-person embedding is extremely close, skip
+            same_idxs = [i for i, pid in enumerate(self.person_ids) if pid == best_pid]
+            too_close = any(float(np.dot(emb_norm, self.embs[i])) > 0.98 for i in same_idxs)
+            if not too_close:
+                self._insert_embedding(best_pid, emb_norm)
+                self._trim_person_embeddings(best_pid, MAX_EMBS_PER_PERSON)
+            return best_pid, best_s, False
+
+        # create new person
+        pid = self._create_new_person()
+        self._insert_embedding(pid, emb_norm)
+        return pid, best_s, True
+
+    def _create_new_person(self) -> int:
+        cur = self.db.cursor()
+        cur.execute("INSERT INTO people DEFAULT VALUES")
+        self.db.commit()
+        return int(cur.lastrowid)
 
 
 # ======================
-# Helpers
+# Geometry + Drawing
 # ======================
-def l2norm(v):
-    return v / (np.linalg.norm(v) + 1e-9)
-
-
-def cos_sim(a, b):
-    return float(np.dot(a, b))
-
-
 def bbox_area_xyxy(b):
     x1, y1, x2, y2 = b
     return max(0, x2 - x1) * max(0, y2 - y1)
 
 
-def iou_xyxy(a, b):
+def iou_xyxy(a, b) -> float:
     ax1, ay1, ax2, ay2 = a
     bx1, by1, bx2, by2 = b
     ix1 = max(ax1, bx1)
@@ -107,14 +210,13 @@ def draw_label(img, text, x, y, bg=(0, 0, 0), fg=(255, 255, 255)):
 
 
 # ======================
-# MediaPipe indices for EAR (eye openness)
+# Attention features
 # ======================
 LEFT_EYE = [33, 160, 158, 133, 153, 144]
 RIGHT_EYE = [362, 385, 387, 263, 373, 380]
 
 
 def ear_from_landmarks(pts, idx):
-    # EAR = (||p2-p6|| + ||p3-p5||) / (2*||p1-p4||)
     p1, p2, p3, p4, p5, p6 = [pts[i] for i in idx]
 
     def dist(a, b):
@@ -123,116 +225,31 @@ def ear_from_landmarks(pts, idx):
     return (dist(p2, p6) + dist(p3, p5)) / (2.0 * dist(p1, p4) + 1e-9)
 
 
-def simple_head_forward_ratio(pts):
+def nose_center_ratio(pts) -> float:
     """
-    Simple 2D head "forward" proxy:
-    - Take nose x
-    - Compare to midpoint between left and right eye corners
-    - Normalize by eye distance
-    If nose stays near the middle, head is likely facing forward.
+    Nose x offset from eye-midpoint, normalized by eye distance.
+    Smaller => more forward.
     """
-    nose = pts[1]         # nose tip-ish in FaceMesh
-    left_eye = pts[33]    # left eye outer corner
-    right_eye = pts[263]  # right eye outer corner
+    nose = pts[1]
+    left_eye = pts[33]
+    right_eye = pts[263]
 
     eye_mid_x = 0.5 * (left_eye[0] + right_eye[0])
     eye_dist = abs(right_eye[0] - left_eye[0]) + 1e-6
     offset = abs(nose[0] - eye_mid_x)
-
-    ratio = offset / eye_dist  # normalized
-    return ratio
-
-
-# ======================
-# Identity matching
-# ======================
-def match_or_create_identity(face_emb):
-    e = l2norm(face_emb.astype(np.float32))
-
-    best_person = None
-    best_s = -1.0
-
-    # for p in people:
-    #     if not p["embs"]:
-    #         continue
-    #     s = max(cos_sim(e, emb) for emb in p["embs"])
-    #     if s > best_s:
-    #         best_s = s
-    #         best_person = p
-
-    
-    db = sqlite3.connect("database.db")
-    db.enable_load_extension(True)
-    sqlite_vec.load(db)
-    db.enable_load_extension(False) # Best practice: disable after loading
-
-    cur = db.cursor()
-
-    embedding_bytes = struct.pack(f'{len(face_emb)}f', *face_emb)
-    query = """
-    SELECT rowid, embedding
-    FROM people_vectors
-    ORDER BY embedding <-> ?
-    LIMIT 1
-    """
-    result = cur.execute(query, (embedding_bytes,)).fetchone()
-
-    if result:
-        person_id, person_embedding_bytes = result
-        person_embedding = np.array(struct.unpack(f'{len(face_emb)}f', person_embedding_bytes), dtype=np.float32)
-        # Calculate cosine similarity
-        dot_product = np.dot(face_emb, person_embedding)
-        norm_embedding = np.linalg.norm(face_emb)
-        norm_person = np.linalg.norm(person_embedding)
-        cosine_similarity = dot_product / (norm_embedding * norm_person)
-        best_person = person_id
-        best_s = cosine_similarity
-
-    
-    
-
-    if best_person is not None and best_s >= COSINE_THRESH:
-        # get the user id given the row id
-        cur.execute("SELECT id FROM people WHERE embedding_row_id = ?", (best_person,))
-        row = cur.fetchone()
-        if row is None:
-            raise RuntimeError("Inconsistent DB state: embedding found but no corresponding person ID.")
-        best_person = row[0]
-
-        # Add some variety, but cap it
-        if all(cos_sim(e, emb) < 0.98 for emb in best_person["embs"]):
-            best_person["embs"].append(e)
-            if len(best_person["embs"]) > 12:
-                best_person["embs"] = best_person["embs"][-12:]
-        cur.close()
-        db.commit()
-        return best_person, best_s, False
-
-    # insert into the db
-    cursor = db.execute("INSERT INTO people_vectors(embedding) VALUES (?)", (embedding_bytes,))
-    embedding_id = cursor.lastrowid  # Get the auto-generated rowid
-
-    db.execute("""
-        SELECT max(id) FROM people
-    """)
-
-    row = cur.fetchone()
-    next_id = 1 if row[0] is None else row[0] + 1
-
-    db.execute("""
-        INSERT INTO people
-        (id, embedding_row_id) VALUES (?, ?)
-    """, (next_id, embedding_id))
-
-    cur.close()
-    db.commit()
-    return next_id, best_s, True
+    return float(offset / eye_dist)
 
 
 # ======================
 # MAIN
 # ======================
 def main():
+    # DB
+    db = sqlite3.connect(SQLITE_PATH)
+    init_db(db)
+    store = EmbeddingStore(db)
+
+    # Models
     print("Loading models...")
     yolo = YOLO(YOLO_MODEL)
 
@@ -248,11 +265,8 @@ def main():
         min_tracking_confidence=0.3,
     )
 
-    # people, next_id = load_db(DB_PATH)
-    # print(f"Loaded {len(people)} saved identities from {DB_PATH}. Next id={next_id}")
-
-    # Per-identity state for attention
-    # state[pid] = {"closed_since": t or None, "last_attentive": 0/1/None, "last_update": t}
+    # Attention state (timers need stable identity)
+    # state[pid] = {"closed_since": float|None}
     state = {}
 
     cap = cv2.VideoCapture(CAM_INDEX)
@@ -261,6 +275,8 @@ def main():
 
     frame_i = 0
     prev_time = time.time()
+
+    print("Running... q=quit, c=clear identities")
 
     try:
         while True:
@@ -273,7 +289,7 @@ def main():
             H, W = frame.shape[:2]
 
             # ----------------------
-            # People count (YOLO)
+            # YOLO person detection (count)
             # ----------------------
             y = yolo.predict(frame, conf=PERSON_CONF, classes=[0], verbose=False)[0]
             person_boxes = []
@@ -283,7 +299,7 @@ def main():
                     person_boxes.append((x1, y1, x2, y2))
 
             # ----------------------
-            # Face recognition (InsightFace)
+            # InsightFace faces
             # ----------------------
             faces_if = face_app.get(frame)
             if_faces = []
@@ -294,7 +310,7 @@ def main():
                 if_faces.append({"bbox": (fx1, fy1, fx2, fy2), "emb": f.embedding})
 
             # ----------------------
-            # Face landmarks (MediaPipe)
+            # MediaPipe landmarks
             # ----------------------
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             res = face_mesh.process(rgb)
@@ -312,13 +328,12 @@ def main():
                     mp_faces.append({"bbox": (x1, y1, x2, y2), "pts": pts})
 
             # ----------------------
-            # Pair MP faces to IF faces by IoU (robust pairing)
+            # Pair MP faces to IF faces by IoU
             # ----------------------
-            # For each MP face, find best IF face match
             matched = []
             used_if = set()
 
-            for mi, mpf in enumerate(mp_faces):
+            for mpf in mp_faces:
                 best_j = None
                 best_iou = 0.0
                 for j, iff in enumerate(if_faces):
@@ -329,46 +344,42 @@ def main():
                         best_iou = s
                         best_j = j
 
-                # If IoU is tiny, still allow a weak match if there is only one face around.
-                if best_j is not None and (best_iou >= 0.10 or (len(if_faces) == 1 and len(mp_faces) == 1)):
+                if best_j is not None and (best_iou >= MIN_IOU_MATCH or (len(if_faces) == 1 and len(mp_faces) == 1)):
                     used_if.add(best_j)
                     matched.append((mpf, if_faces[best_j], best_iou))
                 else:
                     matched.append((mpf, None, best_iou))
 
             # ----------------------
-            # Compute identity + attention for matched faces
+            # Identity + Attention
             # ----------------------
             for mpf, iff, best_iou in matched:
                 mx1, my1, mx2, my2 = mpf["bbox"]
                 pts = mpf["pts"]
 
-                # Compute attention features first (works even if identity fails)
+                # Attention features
                 ear_val = 0.5 * (ear_from_landmarks(pts, LEFT_EYE) + ear_from_landmarks(pts, RIGHT_EYE))
                 eyes_closed = ear_val < EAR_CLOSED_THRESH
 
-                if eyes_closed:
-                    closed_long_flag = True  # will become true only after timer per person id exists
-                else:
-                    closed_long_flag = False
+                ratio = nose_center_ratio(pts)
+                head_forward = ratio < NOSE_CENTER_RATIO_THRESH
 
-                head_ratio = simple_head_forward_ratio(pts)
-                head_forward = head_ratio < NOSE_CENTER_RATIO_THRESH
+                pid = None
+                sim = None
+                was_new = None
 
-                # Identity (if we have InsightFace embedding for this MP face)
-                if iff is None:
-                    pid = None
-                else:
-                    pid, next_id, sim, was_new = match_or_create_identity(iff["emb"])
+                if iff is not None:
+                    pid, sim, was_new = store.match_or_create(iff["emb"])
 
                 attentive = None
+                eyes_closed_long = False
 
                 if pid is not None:
                     if pid not in state:
-                        state[pid] = {"closed_since": None, "last_attentive": None, "last_update": 0.0}
+                        state[pid] = {"closed_since": None}
                     st = state[pid]
 
-                    # Update closed timer
+                    # eyes-closed timer
                     if eyes_closed:
                         if st["closed_since"] is None:
                             st["closed_since"] = now
@@ -377,15 +388,9 @@ def main():
 
                     eyes_closed_long = (st["closed_since"] is not None) and ((now - st["closed_since"]) >= EYES_CLOSED_LONG_SEC)
 
-                    # Binary decision
                     attentive = 1 if (head_forward and not eyes_closed_long) else 0
 
-                    st["last_attentive"] = attentive
-                    st["last_update"] = now
-                else:
-                    eyes_closed_long = False  # unknown without a stable identity timer
-
-                # Draw face box and labels
+                # Draw face bbox
                 cv2.rectangle(frame, (mx1, my1), (mx2, my2), (40, 200, 40), 2)
 
                 if pid is None:
@@ -395,23 +400,17 @@ def main():
                     draw_label(frame, f"Person {pid}", mx1, my1)
                     draw_label(frame, f"Attentive: {attentive}", mx1, my1 + 28)
 
-                # Debug overlay
                 if SHOW_DEBUG_OVERLAY:
-                    draw_label(frame, f"EAR: {ear_val:.3f} closed_long:{int(eyes_closed_long)}", mx1, my1 + 56)
-                    draw_label(frame, f"nose_ratio:{head_ratio:.3f} forward:{int(head_forward)}", mx1, my1 + 84)
-                    if iff is not None:
-                        draw_label(frame, f"IoU(IF/MP): {best_iou:.2f}", mx1, my1 + 112)
+                    draw_label(frame, f"EAR:{ear_val:.3f} closed_long:{int(eyes_closed_long)}", mx1, my1 + 56)
+                    draw_label(frame, f"nose_ratio:{ratio:.3f} forward:{int(head_forward)}", mx1, my1 + 84)
+                    if sim is not None:
+                        draw_label(frame, f"cos:{sim:.2f} iou:{best_iou:.2f}", mx1, my1 + 112)
 
-                # Terminal debug prints (optional)
-                if PRINT_DEBUG_EVERY_N_FRAMES and frame_i % PRINT_DEBUG_EVERY_N_FRAMES == 0 and pid is not None:
-                    print(
-                        f"[Person {pid}] ear={ear_val:.3f} "
-                        f"head_ratio={head_ratio:.3f} head_forward={head_forward} "
-                        f"attentive={attentive}"
-                    )
+                if PRINT_DEBUG_EVERY_N_FRAMES and pid is not None and frame_i % PRINT_DEBUG_EVERY_N_FRAMES == 0:
+                    print(f"[Person {pid}] cos={sim:.3f} ear={ear_val:.3f} ratio={ratio:.3f} forward={head_forward} closed_long={eyes_closed_long} attentive={attentive}")
 
             # ----------------------
-            # Draw YOLO person boxes (counting)
+            # Draw YOLO person boxes
             # ----------------------
             for (x1, y1, x2, y2) in person_boxes:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (200, 200, 40), 2)
@@ -423,28 +422,26 @@ def main():
             prev_time = now
             fps = 1.0 / (dt + 1e-9)
 
+            saved_count = count_people(db)
+
             draw_label(frame, f"People in frame: {len(person_boxes)}", 10, 30)
             draw_label(frame, f"FPS: {fps:.1f}", 10, 60)
-            draw_label(frame, f"Saved identities: {len(people)}", 10, 90)
+            draw_label(frame, f"Saved identities: {saved_count}", 10, 90)
             draw_label(frame, "q: quit | c: clear DB", 10, 120)
 
-            cv2.imshow("People + Identity + Binary Attention (Fixed)", frame)
+            cv2.imshow("People + Identity + Binary Attention (SQLite)", frame)
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
                 break
             if key == ord("c"):
-                # Clear identity DB
-                people = []
-                next_id = 1
+                clear_people(db)
+                store._load_all()
                 state = {}
-                if os.path.exists(DB_PATH):
-                    os.remove(DB_PATH)
-                print("Cleared saved identities (deleted faces_db.npz).")
+                print("Cleared identities from database.db")
 
     finally:
-        save_db(DB_PATH, people, next_id)
-        print(f"Saved {len(people)} identities to {DB_PATH}.")
+        db.close()
         cap.release()
         cv2.destroyAllWindows()
 
