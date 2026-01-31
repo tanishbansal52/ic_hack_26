@@ -33,6 +33,7 @@ CREATE TABLE attendance_logs (
     attentiveness_score FLOAT, 
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- timestamp tells you exactly when during that class they were scanned. can be ignored for now.
 
 -- 5. Grades
 CREATE TABLE grades (
