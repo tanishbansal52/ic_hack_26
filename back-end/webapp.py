@@ -10,8 +10,8 @@ CORS(app)
 # --- CONFIGURATION: PATHS TO YOUR DATABASES ---
 # We use absolute paths to be safe, or relative to this script
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CAMERA_DB_PATH = os.path.join(BASE_DIR, "../database.db") # The existing one
-GRADES_DB_PATH = os.path.join(BASE_DIR, "../grades.db")   # The new one you made
+CAMERA_DB_PATH = os.path.join(BASE_DIR, "database.db") # The existing one
+GRADES_DB_PATH = os.path.join(BASE_DIR, "grades.db")   # The new one you made
 
 def get_db_connection():
     try:
@@ -42,7 +42,7 @@ def get_module_roi(module_id):
 
     # --- STEP 1: Get Total Lectures for this Module ---
     # 'main' refers to the camera database we connected to first
-    cur.execute("SELECT COUNT(*) FROM main.lectures WHERE module = ?", (module_id,))
+    cur.execute("SELECT COUNT(*) FROM lectures WHERE module = ?", (module_id,))
     total_lectures = cur.fetchone()[0]
 
     if total_lectures == 0:
