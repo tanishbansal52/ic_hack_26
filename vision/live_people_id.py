@@ -25,7 +25,7 @@ COSINE_THRESH = 0.50          # stricter => fewer false matches (0.45–0.60 typ
 MAX_EMBS_PER_PERSON = 12      # cap samples per person (keeps DB small)
 
 # SQLite
-SQLITE_PATH = "database.db"
+SQLITE_PATH = "imperial_students.db"  # Changed from "database.db"
 
 # Face / landmark reliability
 MIN_FACE_AREA = 40 * 40
@@ -63,7 +63,25 @@ def init_db(db: sqlite3.Connection):
         FOREIGN KEY(person_id) REFERENCES people(id)
     )
     """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS attention_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        person_id INTEGER NOT NULL,
+        module_name TEXT NOT NULL,
+        session_start REAL NOT NULL,
+        session_end REAL,
+        total_frames INTEGER DEFAULT 0,
+        attentive_frames INTEGER DEFAULT 0,
+        eyes_closed_frames INTEGER DEFAULT 0,
+        head_forward_frames INTEGER DEFAULT 0,
+        attentiveness_score REAL DEFAULT 0.0,
+        UNIQUE(person_id, module_name),
+        FOREIGN KEY(person_id) REFERENCES people(id)
+    )
+    """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_people_embeddings_person ON people_embeddings(person_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_attention_records_person ON attention_records(person_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_attention_records_module ON attention_records(module_name)")
     db.commit()
 
 
@@ -183,6 +201,145 @@ class EmbeddingStore:
         return int(cur.lastrowid)
 
 
+class AttentionTracker:
+    """
+    Tracks attention metrics for each person across a session.
+    Stores data in imperial_students.db with module information.
+    """
+    
+    def __init__(self, db: sqlite3.Connection, module_name: str):
+        self.db = db
+        self.module_name = module_name
+        self.sessions = {}  # pid -> session data
+        
+    def update(self, person_id: int, is_attentive: bool, eyes_closed_long: bool, head_forward: bool, timestamp: float):
+        """Update attention metrics for a person."""
+        if person_id not in self.sessions:
+            self.sessions[person_id] = {
+                'session_start': timestamp,
+                'last_seen': timestamp,
+                'total_frames': 0,
+                'attentive_frames': 0,
+                'eyes_closed_frames': 0,
+                'head_forward_frames': 0,
+            }
+        
+        session = self.sessions[person_id]
+        session['last_seen'] = timestamp
+        session['total_frames'] += 1
+        
+        if is_attentive:
+            session['attentive_frames'] += 1
+        if eyes_closed_long:
+            session['eyes_closed_frames'] += 1
+        if head_forward:
+            session['head_forward_frames'] += 1
+    
+    def get_attentiveness_score(self, person_id: int) -> float:
+        """
+        Calculate attentiveness score (0-100).
+        Based on: attentive frames / total frames
+        Penalized by excessive eye closure.
+        """
+        if person_id not in self.sessions:
+            return 0.0
+        
+        session = self.sessions[person_id]
+        total = session['total_frames']
+        
+        if total == 0:
+            return 0.0
+        
+        # Base score: percentage of attentive frames
+        base_score = (session['attentive_frames'] / total) * 100
+        
+        # Penalty for excessive eye closure (excluding normal blinking)
+        # If eyes closed > 15% of frames, apply penalty
+        eyes_closed_ratio = session['eyes_closed_frames'] / total
+        penalty = max(0, (eyes_closed_ratio - 0.15) * 100)
+        
+        return max(0.0, min(100.0, base_score - penalty))
+    
+    def save_session(self, person_id: int):
+        """Save or update session data in database."""
+        if person_id not in self.sessions:
+            return
+        
+        session = self.sessions[person_id]
+        score = self.get_attentiveness_score(person_id)
+        
+        cur = self.db.cursor()
+        
+        # Check if record already exists for this person and module
+        cur.execute("""
+            SELECT id, total_frames, attentive_frames, eyes_closed_frames, head_forward_frames 
+            FROM attention_records 
+            WHERE person_id = ? AND module_name = ?
+        """, (person_id, self.module_name))
+        
+        existing = cur.fetchone()
+        
+        if existing:
+            # Update existing record: accumulate frames
+            cur.execute("""
+                UPDATE attention_records 
+                SET session_end = ?,
+                    total_frames = ?,
+                    attentive_frames = ?,
+                    eyes_closed_frames = ?,
+                    head_forward_frames = ?,
+                    attentiveness_score = ?
+                WHERE person_id = ? AND module_name = ?
+            """, (
+                session['last_seen'],
+                existing[1] + session['total_frames'],
+                existing[2] + session['attentive_frames'],
+                existing[3] + session['eyes_closed_frames'],
+                existing[4] + session['head_forward_frames'],
+                score,
+                person_id,
+                self.module_name
+            ))
+        else:
+            # Insert new record
+            cur.execute("""
+                INSERT INTO attention_records 
+                (person_id, module_name, session_start, session_end, total_frames, 
+                 attentive_frames, eyes_closed_frames, head_forward_frames, 
+                 attentiveness_score)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                person_id,
+                self.module_name,
+                session['session_start'],
+                session['last_seen'],
+                session['total_frames'],
+                session['attentive_frames'],
+                session['eyes_closed_frames'],
+                session['head_forward_frames'],
+                score
+            ))
+        
+        self.db.commit()
+    
+    def cleanup_inactive_sessions(self, current_time: float, timeout: float = 30.0):
+        """Save and remove sessions that haven't been seen recently."""
+        to_remove = []
+        for pid, session in self.sessions.items():
+            if current_time - session['last_seen'] > timeout:
+                self.save_session(pid)
+                to_remove.append(pid)
+        
+        for pid in to_remove:
+            del self.sessions[pid]
+    
+    def save_all_sessions(self):
+        """Save all active sessions (called on exit)."""
+        for pid in list(self.sessions.keys()):
+            self.save_session(pid)
+        self.sessions.clear()
+
+
 # ======================
 # Geometry + Drawing
 # ======================
@@ -250,6 +407,16 @@ def main():
     db = sqlite3.connect(SQLITE_PATH)
     init_db(db)
     store = EmbeddingStore(db)
+    
+    # Ask for module name
+    print("\n" + "="*60)
+    module_name = input("Enter module name for this session (e.g., 'Machine Learning'): ").strip()
+    if not module_name:
+        module_name = "Live Session"
+    print(f"Tracking attention for: {module_name}")
+    print("="*60 + "\n")
+    
+    attention_tracker = AttentionTracker(db, module_name)
 
     # Models
     print("Loading models...")
@@ -280,8 +447,9 @@ def main():
 
     frame_i = 0
     prev_time = time.time()
+    last_cleanup = time.time()
 
-    print("Running... q=quit, c=clear identities")
+    print("Running... q=quit, c=clear identities, s=save sessions")
 
     try:
         while True:
@@ -292,6 +460,11 @@ def main():
             frame_i += 1
             now = time.time()
             H, W = frame.shape[:2]
+
+            # Cleanup inactive sessions every 10 seconds
+            if now - last_cleanup > 10.0:
+                attention_tracker.cleanup_inactive_sessions(now)
+                last_cleanup = now
 
             # ----------------------
             # YOLO person detection (count)
@@ -395,6 +568,10 @@ def main():
                     eyes_closed_long = (st["closed_since"] is not None) and ((now - st["closed_since"]) >= EYES_CLOSED_LONG_SEC)
 
                     attentive = 1 if (head_forward and not eyes_closed_long) else 0
+                    
+                    # Track attention
+                    attention_tracker.update(pid, bool(attentive), eyes_closed_long, head_forward, now)
+                    current_score = attention_tracker.get_attentiveness_score(pid)
 
                 # Draw face bbox
                 cv2.rectangle(frame, (mx1, my1), (mx2, my2), (40, 200, 40), 2)
@@ -404,7 +581,7 @@ def main():
                     draw_label(frame, "Attentive: --", mx1, my1 + 28)
                 else:
                     draw_label(frame, f"Person {pid}", mx1, my1)
-                    draw_label(frame, f"Attentive: {attentive}", mx1, my1 + 28)
+                    draw_label(frame, f"Attentive: {attentive} (Score: {current_score:.1f}%)", mx1, my1 + 28)
 
                 if SHOW_DEBUG_OVERLAY:
                     draw_label(frame, f"EAR:{ear_val:.3f} closed_long:{int(eyes_closed_long)}", mx1, my1 + 56)
@@ -433,9 +610,9 @@ def main():
             draw_label(frame, f"People in frame: {len(person_boxes)}", 10, 30)
             draw_label(frame, f"FPS: {fps:.1f}", 10, 60)
             draw_label(frame, f"Saved identities: {saved_count}", 10, 90)
-            draw_label(frame, "q: quit | c: clear DB", 10, 120)
+            draw_label(frame, "q: quit | c: clear DB | s: save sessions", 10, 120)
 
-            cv2.imshow("People + Identity + Binary Attention (SQLite)", frame)
+            cv2.imshow("People + Identity + Attention Tracking", frame)
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
@@ -444,9 +621,16 @@ def main():
                 clear_people(db)
                 store._load_all()
                 state = {}
-                print("Cleared identities from database.db")
+                attention_tracker.sessions.clear()
+                print(f"Cleared identities from {SQLITE_PATH}")
+            if key == ord("s"):
+                attention_tracker.save_all_sessions()
+                print("Saved all sessions to database")
 
     finally:
+        # Save all active sessions before closing
+        print("\nSaving attention data...")
+        attention_tracker.save_all_sessions()
         db.close()
         cap.release()
         cv2.destroyAllWindows()
