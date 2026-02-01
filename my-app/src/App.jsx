@@ -37,10 +37,10 @@ function App() {
         <div className="header-container">
           <div className="header-text">
             <h1 className="main-title">
-              Module Selection Helper
+              Module Performance Tracker
             </h1>
             <p className="subtitle">
-              {showChat ? 'Chat with your AI academic advisor' : 'Discover which modules require your attention'}
+              {showChat ? 'Get personalized advice on your modules' : 'See how attendance impacts your grades'}
             </p>
           </div>
           
