@@ -53,7 +53,7 @@ function App() {
         </div>
 
       {/* User Context Form */}
-      {!showChat && (
+      {showChat && (
         <div className="user-context-card">
           <h3 className="context-title">
             Your Information
