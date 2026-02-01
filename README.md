@@ -1,3 +1,11 @@
+<img width="3024" height="1728" alt="image" src="https://github.com/user-attachments/assets/e9208b0e-a937-425b-84c5-3c8905f2ccbe" />
+
+<img width="3022" height="1726" alt="image" src="https://github.com/user-attachments/assets/08860cdd-59e3-4617-8b4f-5061a91a2190" />
+
+<img width="3024" height="1726" alt="image" src="https://github.com/user-attachments/assets/22d55500-84c9-4aaa-b8d2-15bba19555b2" />
+
+
+
 ## Inspiration
 We noticed how difficult it is for educators to gauge student engagement in large lecture halls. Traditional methods rely on gut feeling or manual observation, which doesn't scale. We wanted to create a tool that could automatically track attention levels during lectures, helping professors understand which topics resonate and which lose students' focus.
 
