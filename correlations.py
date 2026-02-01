@@ -31,7 +31,7 @@ def get_module_data(db_path: str, module_name: str) -> Tuple[np.ndarray, np.ndar
     cursor = conn.cursor()
     
     query = """
-    SELECT lecture_attendance, grade 
+    SELECT lecture_attendance, grade, year
     FROM module_records 
     WHERE module_name = ?
       AND lecture_attendance IS NOT NULL 
@@ -47,8 +47,9 @@ def get_module_data(db_path: str, module_name: str) -> Tuple[np.ndarray, np.ndar
     
     attendance = np.array([row[0] for row in results])
     grades = np.array([row[1] for row in results])
+    years = np.array([row[2] for row in results])
     
-    return attendance, grades
+    return attendance, grades, years
 
 def calculate_effectiveness_score(attendance: np.ndarray, grades: np.ndarray) -> Dict:
     """
@@ -150,9 +151,11 @@ def analyze_all_modules(db_path: str) -> Dict[str, Dict]:
     results = {}
     
     for module in modules:
-        attendance, grades = get_module_data(db_path, module)
+        attendance, grades, years = get_module_data(db_path, module)
         if len(attendance) > 0:
-            results[module] = calculate_effectiveness_score(attendance, grades)
+            tmp = calculate_effectiveness_score(attendance, grades)
+            tmp["year"] = int(years[0])
+            results[module] = tmp
     
     return results
 
