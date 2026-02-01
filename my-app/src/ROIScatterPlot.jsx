@@ -144,7 +144,7 @@ const ROIScatterPlot = ({ data, rSquared }) => {
               stroke="#cbd5e0"
             >
               <Label 
-                value="Attendance / Attentiveness (%)" 
+                value="Attendance (%)" 
                 offset={-40} 
                 position="insideBottom" 
                 style={{ fill: '#2d3748', fontWeight: 'bold', fontSize: 14 }}

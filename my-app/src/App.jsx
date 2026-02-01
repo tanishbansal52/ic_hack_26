@@ -4,11 +4,6 @@ import AIChatBot from './AIChatBot';
 import './App.css';
 
 // Hardcoded list from your DB for now
-const modules = [
-  { id: 1, code: 'DOC601', name: 'Machine Learning', description: 'Learn AI algorithms and neural networks' },
-  { id: 2, code: 'DOC602', name: 'Computer Graphics', description: 'Master 3D rendering and visual computing' },
-  { id: 3, code: 'DOC404', name: 'Professional Skills', description: 'Develop career-ready soft skills' }
-];
 
 function App() {
   const [showChat, setShowChat] = useState(false);
@@ -17,6 +12,16 @@ function App() {
     year: 2,
     course: 'Computer Science'
   });
+
+  const [modules, setModules] = useState({});
+
+  React.useEffect(() => {
+    fetch('/src/assets/module_effectiveness.json').then(response => response.json()).then(data => {
+      console.log(data)
+      setModules(data);
+    })
+
+  }, [])
 
   return (
     <div className="app-container">
@@ -99,13 +104,13 @@ function App() {
           </div>
         ) : (
           <div className="modules-grid">
-            {modules.map((mod, index) => (
+            {Object.entries(modules).map(([key, mod], index) => (
               <div 
-                key={mod.id} 
+                key={key} 
                 className="module-card-wrapper"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <ModuleCard module={mod} />
+                <ModuleCard module={mod} moduleName={key} />
               </div>
             ))}
           </div>
