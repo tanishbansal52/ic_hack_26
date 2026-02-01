@@ -234,7 +234,7 @@ const AIChatBot = ({ userContext }) => {
             alignItems: 'center',
             gap: '10px'
           }}>
-            Academic Advisor AI
+            Academic Advisor
           </h3>
           <p style={{ 
             margin: '8px 0 0 0', 
@@ -242,7 +242,7 @@ const AIChatBot = ({ userContext }) => {
             opacity: 0.95,
             fontWeight: '500'
           }}>
-            Get personalized module recommendations and academic advice
+            Get module recommendations based on your attendance and performance
           </p>
         </div>
         <button
