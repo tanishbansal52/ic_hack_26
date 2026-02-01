@@ -2,6 +2,7 @@ import time
 import cv2
 import numpy as np
 import sqlite3
+import os
 
 from ultralytics import YOLO
 from insightface.app import FaceAnalysis
@@ -429,7 +430,9 @@ def main():
     face_app.prepare(ctx_id=-1, det_size=FACE_DET_SIZE)
 
     # MediaPipe Face Landmarker with new API
-    base_options = python.BaseOptions(model_asset_path='face_landmarker.task')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(script_dir, 'face_landmarker.task')
+    base_options = python.BaseOptions(model_asset_path=model_path)
     options = mp_vision.FaceLandmarkerOptions(
         base_options=base_options,
         running_mode=mp_vision.RunningMode.VIDEO,
