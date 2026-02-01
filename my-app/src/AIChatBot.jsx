@@ -33,6 +33,11 @@ const AIChatBot = ({ userContext }) => {
           // 409 means session already exists, which is fine
           setSessionCreated(true);
           console.log('ADK session ready:', sessionId);
+          
+          // Send initial context message to the agent
+          if (userContext.name || userContext.year || userContext.course) {
+            await sendContextToAgent();
+          }
         } else {
           console.error('Failed to create session:', await response.text());
         }
@@ -40,16 +45,45 @@ const AIChatBot = ({ userContext }) => {
         console.error('Error creating session:', error);
       }
       
-      // Show initial greeting
+      // Show initial greeting with personalization
       setMessages([{
         role: 'agent',
-        content: 'Hi! I\'m your academic advisor assistant. I can help you with module recommendations, prerequisites, and academic planning. What would you like to know?',
+        content: `Hi${userContext.name ? ' ' + userContext.name : ''}! I'm your academic advisor assistant. I can see you're in Year ${userContext.year}${userContext.course ? ' studying ' + userContext.course : ''}. I can help you with module recommendations, prerequisites, and academic planning. What would you like to know?`,
         timestamp: new Date().toISOString()
       }]);
     };
     
+    // Function to send context to agent without showing in chat
+    const sendContextToAgent = async () => {
+      const contextParts = [];
+      if (userContext.name) contextParts.push(`Name: ${userContext.name}`);
+      if (userContext.year) contextParts.push(`Year: ${userContext.year}`);
+      if (userContext.course) contextParts.push(`Course: ${userContext.course}`);
+      const contextMessage = `[User Context: ${contextParts.join(', ')}]\n\nPlease acknowledge this context silently and use it for future recommendations.`;
+
+      try {
+        await fetch('/run', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            appName: 'my_agent',
+            userId: userId,
+            sessionId: sessionId,
+            newMessage: {
+              role: 'user',
+              parts: [{ text: contextMessage }]
+            }
+          })
+        });
+      } catch (error) {
+        console.error('Error sending context:', error);
+      }
+    };
+    
     initializeChat();
-  }, [userId, sessionId]);
+  }, [userId, sessionId, userContext]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
