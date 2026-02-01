@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 from scipy import stats
 
@@ -34,6 +34,8 @@ def home():
 
 @app.route("/api/modules/<int:module_id>/roi", methods=["GET"])
 def get_module_roi(module_id):
+    print("Static folder:", app.static_folder)
+    print("Static URL path:", app.static_url_path)
     conn = get_db_connection()
     if not conn:
         return jsonify({"error": "Database connection failed"}), 500
@@ -47,7 +49,7 @@ def get_module_roi(module_id):
 
     if total_lectures == 0:
         conn.close()
-        return jsonify({"module_id": module_id, "r_squared": 0, "points": []})
+        return render_template("index.html")
 
     # --- STEP 2: The Cross-Database Query ---
     # We fetch grades from 'grades_db.grades' 
