@@ -102,7 +102,7 @@ function App() {
           </div>
         ) : (
           <div className="modules-grid">
-            {Object.entries(modules).map(([key, mod], index) => (
+            {Object.entries(modules).filter(([key, mod]) => mod.year === userContext.year).map(([key, mod], index) => (
               <div 
                 key={key} 
                 className="module-card-wrapper"

@@ -20,7 +20,8 @@
       "variance_explained": 3.28,
       "statistical_significance": 20,
       "effect_size": 2.51
-    }
+    },
+    "year": 1
   },
   "Programming II": {
     "effectiveness_score": 37.69,
@@ -43,7 +44,8 @@
       "variance_explained": 2.85,
       "statistical_significance": 20,
       "effect_size": 2.5
-    }
+    },
+    "year": 1
   },
   "Logic and Reasoning": {
     "effectiveness_score": 39.58,
@@ -66,7 +68,8 @@
       "variance_explained": 3.47,
       "statistical_significance": 20,
       "effect_size": 2.5
-    }
+    },
+    "year": 1
   },
   "Computer Architecture": {
     "effectiveness_score": 39.93,
@@ -89,7 +92,8 @@
       "variance_explained": 3.49,
       "statistical_significance": 20,
       "effect_size": 2.81
-    }
+    },
+    "year": 1
   },
   "Discrete Mathematics": {
     "effectiveness_score": 42.92,
@@ -112,7 +116,8 @@
       "variance_explained": 4.52,
       "statistical_significance": 20,
       "effect_size": 2.87
-    }
+    },
+    "year": 1
   },
   "Mathematical Methods": {
     "effectiveness_score": 43.05,
@@ -135,7 +140,8 @@
       "variance_explained": 4.47,
       "statistical_significance": 20,
       "effect_size": 3.14
-    }
+    },
+    "year": 1
   },
   "Reasoning About Programs": {
     "effectiveness_score": 41.66,
@@ -158,7 +164,8 @@
       "variance_explained": 4.0,
       "statistical_significance": 20,
       "effect_size": 3.05
-    }
+    },
+    "year": 1
   },
   "Algorithms and Complexity": {
     "effectiveness_score": 39.91,
@@ -181,7 +188,8 @@
       "variance_explained": 3.47,
       "statistical_significance": 20,
       "effect_size": 2.84
-    }
+    },
+    "year": 2
   },
   "Software Engineering Design": {
     "effectiveness_score": 35.73,
@@ -204,7 +212,8 @@
       "variance_explained": 2.32,
       "statistical_significance": 20,
       "effect_size": 2.29
-    }
+    },
+    "year": 2
   },
   "Models of Computation": {
     "effectiveness_score": 40.67,
@@ -227,7 +236,8 @@
       "variance_explained": 3.68,
       "statistical_significance": 20,
       "effect_size": 2.98
-    }
+    },
+    "year": 2
   },
   "Probability and Statistics": {
     "effectiveness_score": 40.16,
@@ -250,7 +260,8 @@
       "variance_explained": 3.54,
       "statistical_significance": 20,
       "effect_size": 2.88
-    }
+    },
+    "year": 2
   },
   "Operating Systems": {
     "effectiveness_score": 34.07,
@@ -273,7 +284,8 @@
       "variance_explained": 1.92,
       "statistical_significance": 20,
       "effect_size": 2.04
-    }
+    },
+    "year": 2
   },
   "Computer Graphics": {
     "effectiveness_score": 31.48,
@@ -296,7 +308,8 @@
       "variance_explained": 1.33,
       "statistical_significance": 20,
       "effect_size": 1.71
-    }
+    },
+    "year": 2
   },
   "Networks and Communications": {
     "effectiveness_score": 38.31,
@@ -319,7 +332,8 @@
       "variance_explained": 3.1,
       "statistical_significance": 20,
       "effect_size": 2.34
-    }
+    },
+    "year": 2
   },
   "Databases": {
     "effectiveness_score": 38.24,
@@ -342,7 +356,8 @@
       "variance_explained": 3.0,
       "statistical_significance": 20,
       "effect_size": 2.57
-    }
+    },
+    "year": 2
   },
   "Compilers": {
     "effectiveness_score": 42.32,
@@ -365,7 +380,8 @@
       "variance_explained": 4.36,
       "statistical_significance": 20,
       "effect_size": 2.71
-    }
+    },
+    "year": 3
   },
   "Distributed Systems": {
     "effectiveness_score": 38.81,
@@ -388,7 +404,8 @@
       "variance_explained": 3.16,
       "statistical_significance": 20,
       "effect_size": 2.65
-    }
+    },
+    "year": 3
   },
   "Advanced Databases": {
     "effectiveness_score": 46.48,
@@ -411,7 +428,8 @@
       "variance_explained": 5.55,
       "statistical_significance": 20,
       "effect_size": 3.72
-    }
+    },
+    "year": 3
   },
   "Program Analysis": {
     "effectiveness_score": 33.97,
@@ -434,7 +452,8 @@
       "variance_explained": 1.87,
       "statistical_significance": 20,
       "effect_size": 2.13
-    }
+    },
+    "year": 3
   },
   "Operations Research": {
     "effectiveness_score": 46.5,
@@ -457,7 +476,8 @@
       "variance_explained": 5.57,
       "statistical_significance": 20,
       "effect_size": 3.69
-    }
+    },
+    "year": 3
   },
   "Machine Learning": {
     "effectiveness_score": 38.68,
@@ -480,7 +500,8 @@
       "variance_explained": 3.1,
       "statistical_significance": 20,
       "effect_size": 2.72
-    }
+    },
+    "year": 3
   },
   "Type Systems for Programming Languages": {
     "effectiveness_score": 21.63,
@@ -503,7 +524,8 @@
       "variance_explained": 1.39,
       "statistical_significance": 10,
       "effect_size": 1.62
-    }
+    },
+    "year": 3
   },
   "Computer Vision": {
     "effectiveness_score": 33.47,
@@ -526,6 +548,7 @@
       "variance_explained": 1.76,
       "statistical_significance": 20,
       "effect_size": 2.03
-    }
+    },
+    "year": 3
   }
 }
