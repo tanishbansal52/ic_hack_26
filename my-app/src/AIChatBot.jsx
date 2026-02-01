@@ -161,49 +161,95 @@ const AIChatBot = ({ userContext }) => {
   return (
     <div style={{
       width: '100%',
-      maxWidth: '900px',
+      maxWidth: '1000px',
       margin: '0 auto',
-      border: '1px solid #ddd',
-      borderRadius: '10px',
+      borderRadius: '28px',
       overflow: 'hidden',
-      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+      boxShadow: 
+        '0 8px 32px rgba(31, 38, 135, 0.2), ' +
+        'inset 0 1px 0 rgba(255, 255, 255, 0.5), ' +
+        'inset 0 -1px 0 rgba(255, 255, 255, 0.2), ' +
+        '0 20px 60px rgba(0, 0, 0, 0.15)',
       display: 'flex',
       flexDirection: 'column',
-      height: '650px',
-      background: 'white'
+      height: '700px',
+      background: 'rgba(255, 255, 255, 0.2)',
+      backdropFilter: 'blur(40px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+      border: '1.5px solid rgba(255, 255, 255, 0.4)'
     }}>
       {/* Header */}
       <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.95) 0%, rgba(139, 92, 246, 0.95) 100%)',
         color: 'white',
-        padding: '20px',
+        padding: '24px 28px',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        boxShadow: 
+          '0 4px 12px rgba(99, 102, 241, 0.3), ' +
+          'inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
       }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>🎓 Academic Advisor AI</h3>
-          <p style={{ margin: '5px 0 0 0', fontSize: '13px', opacity: 0.9 }}>
+          <h3 style={{ 
+            margin: 0, 
+            fontSize: '24px', 
+            fontWeight: '800',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}>
+            <span style={{ fontSize: '28px' }}>🤖</span>
+            Academic Advisor AI
+          </h3>
+          <p style={{ 
+            margin: '8px 0 0 0', 
+            fontSize: '14px', 
+            opacity: 0.95,
+            fontWeight: '500'
+          }}>
             Get personalized module recommendations and academic advice
           </p>
         </div>
         <button
           onClick={clearChat}
           style={{
-            background: 'rgba(255,255,255,0.2)',
-            border: 'none',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '2px solid rgba(255, 255, 255, 0.4)',
             color: 'white',
-            padding: '10px 18px',
-            borderRadius: '6px',
+            padding: '12px 22px',
+            borderRadius: '12px',
             cursor: 'pointer',
-            fontSize: '13px',
-            fontWeight: '600',
-            transition: 'all 0.2s'
+            fontSize: '14px',
+            fontWeight: '700',
+            transition: 'all 0.3s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: 
+              '0 4px 12px rgba(0, 0, 0, 0.15), ' +
+              'inset 0 1px 0 rgba(255, 255, 255, 0.4)'
           }}
-          onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
-          onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+          onMouseEnter={(e) => {
+            e.target.style.background = 'rgba(255, 255, 255, 0.3)';
+            e.target.style.transform = 'translateY(-2px)';
+            e.target.style.boxShadow = 
+              '0 6px 16px rgba(0, 0, 0, 0.2), ' +
+              'inset 0 1px 0 rgba(255, 255, 255, 0.5)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = 'rgba(255, 255, 255, 0.2)';
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = 
+              '0 4px 12px rgba(0, 0, 0, 0.15), ' +
+              'inset 0 1px 0 rgba(255, 255, 255, 0.4)';
+          }}
         >
-          🗑️ Clear Chat
+          <span style={{ fontSize: '16px' }}>🗑️</span>
+          <span>Clear Chat</span>
         </button>
       </div>
 
@@ -211,8 +257,8 @@ const AIChatBot = ({ userContext }) => {
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '20px',
-        background: '#f8f9fa'
+        padding: '28px',
+        background: 'rgba(255, 255, 255, 0.05)'
       }}>
         {messages.map((msg, idx) => (
           <div
@@ -220,49 +266,111 @@ const AIChatBot = ({ userContext }) => {
             style={{
               display: 'flex',
               justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              marginBottom: '16px',
-              animation: 'fadeIn 0.3s ease-in'
+              marginBottom: '20px',
+              animation: 'fadeInUp 0.4s ease-out'
             }}
           >
+            {msg.role === 'agent' && (
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: '12px',
+                fontSize: '18px',
+                flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+              }}>
+                🤖
+              </div>
+            )}
             <div
               style={{
-                maxWidth: '75%',
-                padding: '14px 18px',
-                borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                maxWidth: '70%',
+                padding: '16px 20px',
+                borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
                 background: msg.role === 'user'
-                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                  : 'white',
-                color: msg.role === 'user' ? 'white' : '#333',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(139, 92, 246, 0.9) 100%)'
+                  : 'rgba(255, 255, 255, 0.4)',
+                backdropFilter: 'blur(20px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                color: msg.role === 'user' ? 'white' : '#2d3748',
+                boxShadow: msg.role === 'user' 
+                  ? '0 4px 16px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4)'
+                  : '0 4px 16px rgba(31, 38, 135, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
                 wordWrap: 'break-word',
-                whiteSpace: 'pre-wrap'
+                whiteSpace: 'pre-wrap',
+                border: msg.role === 'user' 
+                  ? '1px solid rgba(255, 255, 255, 0.3)' 
+                  : '1.5px solid rgba(255, 255, 255, 0.4)'
               }}
             >
-              <div style={{ fontSize: '15px', lineHeight: '1.6' }}>
+              <div style={{ fontSize: '15px', lineHeight: '1.7', fontWeight: msg.role === 'agent' ? '500' : '400' }}>
                 {msg.content}
               </div>
               <div style={{
                 fontSize: '11px',
-                marginTop: '6px',
-                opacity: 0.7,
-                textAlign: msg.role === 'user' ? 'right' : 'left'
+                marginTop: '8px',
+                opacity: msg.role === 'user' ? 0.8 : 0.6,
+                textAlign: msg.role === 'user' ? 'right' : 'left',
+                fontWeight: '600'
               }}>
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
             </div>
+            {msg.role === 'user' && (
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: '12px',
+                fontSize: '18px',
+                flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(240, 147, 251, 0.3)'
+              }}>
+                👤
+              </div>
+            )}
           </div>
         ))}
         {loading && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px', alignItems: 'center' }}>
             <div style={{
-              padding: '14px 18px',
-              borderRadius: '18px 18px 18px 4px',
-              background: 'white',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: '12px',
+              fontSize: '18px',
+              flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
             }}>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              🤖
+            </div>
+            <div style={{
+              padding: '16px 20px',
+              borderRadius: '20px 20px 20px 4px',
+              background: 'rgba(255, 255, 255, 0.4)',
+              backdropFilter: 'blur(20px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+              boxShadow: 
+                '0 4px 16px rgba(31, 38, 135, 0.15), ' +
+                'inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+              border: '1.5px solid rgba(255, 255, 255, 0.4)'
+            }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <div className="dot-flashing"></div>
-                <span style={{ fontSize: '13px', color: '#666', marginLeft: '8px' }}>AI is thinking...</span>
+                <span style={{ fontSize: '14px', color: '#718096', marginLeft: '12px', fontWeight: '600' }}>AI is thinking...</span>
               </div>
             </div>
           </div>
@@ -272,24 +380,39 @@ const AIChatBot = ({ userContext }) => {
 
       {/* Input */}
       <div style={{
-        padding: '18px',
-        background: 'white',
-        borderTop: '1px solid #e0e0e0'
+        padding: '24px 28px',
+        background: 'rgba(255, 255, 255, 0.15)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1.5px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: 
+          '0 -4px 12px rgba(31, 38, 135, 0.1), ' +
+          'inset 0 1px 0 rgba(255, 255, 255, 0.4)'
       }}>
         {userContext.name && (
           <div style={{
-            fontSize: '12px',
-            color: '#666',
-            marginBottom: '10px',
-            padding: '8px 12px',
-            background: '#f0f0f0',
-            borderRadius: '6px',
-            display: 'inline-block'
+            fontSize: '13px',
+            color: 'rgba(45, 55, 72, 0.9)',
+            marginBottom: '14px',
+            padding: '10px 16px',
+            background: 'rgba(255, 255, 255, 0.4)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            borderRadius: '10px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontWeight: '600',
+            border: '1.5px solid rgba(255, 255, 255, 0.5)',
+            boxShadow: 
+              '0 2px 8px rgba(31, 38, 135, 0.1), ' +
+              'inset 0 1px 0 rgba(255, 255, 255, 0.6)'
           }}>
-            👤 {userContext.name} • Year {userContext.year} • {userContext.course}
+            <span style={{ fontSize: '16px' }}>👤</span>
+            <span>{userContext.name} • Year {userContext.year} • {userContext.course}</span>
           </div>
         )}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end' }}>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -297,49 +420,103 @@ const AIChatBot = ({ userContext }) => {
             placeholder="Ask about modules, prerequisites, recommendations..."
             style={{
               flex: 1,
-              padding: '14px',
-              border: '1px solid #ddd',
-              borderRadius: '10px',
+              padding: '16px 18px',
+              border: '2px solid rgba(255, 255, 255, 0.4)',
+              borderRadius: '16px',
               resize: 'none',
               fontFamily: 'inherit',
               fontSize: '15px',
-              minHeight: '52px',
-              maxHeight: '120px',
+              minHeight: '56px',
+              maxHeight: '140px',
               outline: 'none',
-              transition: 'border-color 0.2s'
+              transition: 'all 0.3s',
+              background: 'rgba(255, 255, 255, 0.4)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              color: '#2d3748',
+              boxShadow: 
+                '0 2px 8px rgba(31, 38, 135, 0.1), ' +
+                'inset 0 1px 0 rgba(255, 255, 255, 0.5)'
             }}
-            onFocus={(e) => e.target.style.borderColor = '#667eea'}
-            onBlur={(e) => e.target.style.borderColor = '#ddd'}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'rgba(139, 92, 246, 0.8)';
+              e.target.style.background = 'rgba(255, 255, 255, 0.5)';
+              e.target.style.boxShadow = 
+                '0 0 0 4px rgba(139, 92, 246, 0.15), ' +
+                '0 4px 12px rgba(139, 92, 246, 0.2), ' +
+                'inset 0 1px 0 rgba(255, 255, 255, 0.6)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+              e.target.style.background = 'rgba(255, 255, 255, 0.4)';
+              e.target.style.boxShadow = 
+                '0 2px 8px rgba(31, 38, 135, 0.1), ' +
+                'inset 0 1px 0 rgba(255, 255, 255, 0.5)';
+            }}
             disabled={loading}
           />
           <button
             onClick={sendMessage}
             disabled={loading || !input.trim()}
             style={{
-              padding: '14px 28px',
+              padding: '16px 32px',
               background: loading || !input.trim()
-                ? '#ccc'
-                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                ? 'rgba(203, 213, 224, 0.4)'
+                : 'linear-gradient(135deg, rgba(99, 102, 241, 0.95) 0%, rgba(139, 92, 246, 0.95) 100%)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
               color: 'white',
-              border: 'none',
-              borderRadius: '10px',
+              border: loading || !input.trim() 
+                ? '2px solid rgba(203, 213, 224, 0.3)'
+                : '2px solid rgba(255, 255, 255, 0.4)',
+              borderRadius: '16px',
               cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
               fontSize: '15px',
-              fontWeight: 'bold',
-              transition: 'all 0.2s',
-              minWidth: '90px'
+              fontWeight: '700',
+              transition: 'all 0.3s',
+              minWidth: '110px',
+              boxShadow: loading || !input.trim() 
+                ? 'none' 
+                : '0 4px 16px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseEnter={(e) => {
+              if (!loading && input.trim()) {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = 
+                  '0 6px 20px rgba(99, 102, 241, 0.5), ' +
+                  'inset 0 1px 0 rgba(255, 255, 255, 0.5)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = loading || !input.trim() 
+                ? 'none' 
+                : '0 4px 16px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4)';
             }}
           >
-            {loading ? '...' : '📤 Send'}
+            {loading ? (
+              <>
+                <div className="spinner-small"></div>
+                <span>Sending</span>
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: '18px' }}>📤</span>
+                <span>Send</span>
+              </>
+            )}
           </button>
         </div>
       </div>
 
       <style>{`
-        @keyframes fadeIn {
+        @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(20px);
           }
           to {
             opacity: 1;
@@ -394,6 +571,19 @@ const AIChatBot = ({ userContext }) => {
           50%, 100% {
             background-color: #d4d9f7;
           }
+        }
+
+        .spinner-small {
+          width: 16px;
+          height: 16px;
+          border: 3px solid rgba(255, 255, 255, 0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

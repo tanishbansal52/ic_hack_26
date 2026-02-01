@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ROIScatterPlot from './ROIScatterPlot';
+import './ModuleCard.css';
 
 const ModuleCard = ({ module }) => {
   const [showROI, setShowROI] = useState(false);
@@ -34,25 +35,45 @@ const ModuleCard = ({ module }) => {
   };
 
   return (
-    <div style={{ border: '1px solid #ddd', borderRadius: '10px', padding: '20px', margin: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-      <h2>{module.code}: {module.name}</h2>
+    <div className="module-card">
+      <div className="module-header">
+        <div className="module-icon">📚</div>
+        <div className="module-info">
+          <div className="module-code">{module.code}</div>
+          <h2 className="module-name">{module.name}</h2>
+          {module.description && (
+            <p className="module-description">{module.description}</p>
+          )}
+        </div>
+      </div>
       
       <button 
         onClick={handleCalculateROI}
-        style={{
-            padding: '10px 20px', 
-            background: showROI ? '#d9534f' : '#0275d8', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '5px', 
-            cursor: 'pointer'
-        }}
+        className={`roi-button ${showROI ? 'active' : ''} ${loading ? 'loading' : ''}`}
+        disabled={loading}
       >
-        {loading ? 'Calculating...' : showROI ? 'Hide ROI' : 'Calculate ROI'}
+        {loading ? (
+          <>
+            <span className="spinner"></span>
+            <span>Calculating...</span>
+          </>
+        ) : showROI ? (
+          <>
+            <span>👁️</span>
+            <span>Hide ROI Analysis</span>
+          </>
+        ) : (
+          <>
+            <span>📈</span>
+            <span>Analyze Attendance ROI</span>
+          </>
+        )}
       </button>
 
       {showROI && roiData && (
-        <ROIScatterPlot data={roiData.points} rSquared={roiData.r_squared} />
+        <div className="roi-content">
+          <ROIScatterPlot data={roiData.points} rSquared={roiData.r_squared} />
+        </div>
       )}
     </div>
   );
