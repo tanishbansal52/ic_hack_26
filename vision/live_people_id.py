@@ -25,7 +25,7 @@ COSINE_THRESH = 0.50          # stricter => fewer false matches (0.45–0.60 typ
 MAX_EMBS_PER_PERSON = 12      # cap samples per person (keeps DB small)
 
 # SQLite
-SQLITE_PATH = "imperial_students.db"  # Changed from "database.db"
+SQLITE_PATH = "../imperial_students.db"  # Use root directory database
 
 # Face / landmark reliability
 MIN_FACE_AREA = 40 * 40
@@ -300,6 +300,7 @@ class AttentionTracker:
                 person_id,
                 self.module_name
             ))
+            print(f"✅ Updated attention record ID {existing[0]} for Person {person_id} in '{self.module_name}' (Score: {score:.1f}%)")
         else:
             # Insert new record
             cur.execute("""
@@ -319,6 +320,8 @@ class AttentionTracker:
                 session['head_forward_frames'],
                 score
             ))
+            record_id = cur.lastrowid
+            print(f"✅ Created NEW attention record ID {record_id} for Person {person_id} in '{self.module_name}' (Score: {score:.1f}%)")
         
         self.db.commit()
     
