@@ -1,417 +1,163 @@
+import json
+from typing import Dict, Optional, List
+
+EFFECTIVENESS_DB_PATH = "module_effectiveness.json"
+
+
+def load_module_effectiveness() -> Dict:
+    """Load module effectiveness data from JSON file."""
+    try:
+        with open(EFFECTIVENESS_DB_PATH, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Module effectiveness database not found at {EFFECTIVENESS_DB_PATH}")
+    except json.JSONDecodeError:
+        raise ValueError("Invalid JSON in module effectiveness database")
+
+
+def get_module_info(module_name: str) -> Optional[Dict]:
+    """Get effectiveness information for a specific module."""
+    data = load_module_effectiveness()
+    return data.get(module_name)
+
+
+def get_all_modules() -> List[str]:
+    """Get list of all module names."""
+    data = load_module_effectiveness()
+    return list(data.keys())
+
+
+def get_top_effective_modules(n: int = 5) -> List[tuple]:
+    """
+    Get top N most effective modules.
+    
+    Returns:
+        List of tuples (module_name, effectiveness_score)
+    """
+    data = load_module_effectiveness()
+    sorted_modules = sorted(
+        data.items(),
+        key=lambda x: x[1].get('effectiveness_score', 0),
+        reverse=True
+    )
+    return [(name, info['effectiveness_score']) for name, info in sorted_modules[:n]]
+
+
+def get_modules_by_category(category: str) -> List[str]:
+    """
+    Get modules by effectiveness category.
+    
+    Categories: "Highly Effective", "Effective", "Moderately Effective", 
+                "Slightly Effective", "Not Effective"
+    """
+    data = load_module_effectiveness()
+    return [
+        name for name, info in data.items()
+        if info.get('category') == category
+    ]
+
+
+def get_module_summary(module_name: str) -> str:
+    """Get a formatted summary of a module's effectiveness."""
+    info = get_module_info(module_name)
+    
+    if not info:
+        return f"Module '{module_name}' not found in database."
+    
+    if 'error' in info:
+        return f"{module_name}: {info['error']}"
+    
+    return f"""
+📚 {module_name}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Effectiveness Score: {info['effectiveness_score']:.2f}/100
+Category: {info['category']}
+Sample Size: {info['sample_size']} students
+
+📊 Key Metrics:
+• Correlation (r): {info['pearson_r']:.4f}
+• Variance Explained (R²): {info['r_squared']:.4f} ({info['r_squared']*100:.1f}%)
+• Statistical Significance: {'Yes' if info['is_significant'] else 'No'} (p={info['pearson_p']:.4f})
+• Effect: {info['slope']:.4f} grade points per attendance unit
+
+📈 Statistics:
+• Avg Attendance: {info['attendance_mean']:.2f}% ± {info['attendance_std']:.2f}%
+• Avg Grade: {info['grade_mean']:.2f} ± {info['grade_std']:.2f}
+
+💡 Interpretation:
+For every 10% increase in lecture attendance, the grade changes by approximately {info['slope']*10:.2f} points.
 """
-Tools for the AI agent to access user and module information.
-This uses fake data for now - replace with real database calls later.
-"""
-
-from typing import Dict, List, Optional
 
 
-# Fake database - replace with real database later
-FAKE_USER_DB = {
-    "user001": {
-        "id": "user001",
-        "name": "Alice Johnson",
-        "email": "alice.johnson@university.edu",
-        "year": 2,
-        "program": "Computer Science",
-        "gpa": 3.7,
-        "grades": {
-            "CS101": {"grade": "A", "credits": 4, "semester": "Fall 2024"},
-            "CS102": {"grade": "A-", "credits": 4, "semester": "Fall 2024"},
-            "MATH201": {"grade": "B+", "credits": 3, "semester": "Fall 2024"},
-            "CS201": {"grade": "A", "credits": 4, "semester": "Spring 2025"},
-            "CS202": {"grade": "B+", "credits": 4, "semester": "Spring 2025"},
-        },
-        "module_history": ["CS101", "CS102", "MATH201", "CS201", "CS202"]
-    },
-    "user002": {
-        "id": "user002",
-        "name": "Bob Smith",
-        "email": "bob.smith@university.edu",
-        "year": 3,
-        "program": "Data Science",
-        "gpa": 3.9,
-        "grades": {
-            "CS101": {"grade": "A", "credits": 4, "semester": "Fall 2023"},
-            "MATH201": {"grade": "A", "credits": 3, "semester": "Fall 2023"},
-            "DS301": {"grade": "A-", "credits": 4, "semester": "Spring 2024"},
-            "CS301": {"grade": "A", "credits": 4, "semester": "Fall 2024"},
-            "ML401": {"grade": "A-", "credits": 4, "semester": "Fall 2024"},
-        },
-        "module_history": ["CS101", "MATH201", "DS301", "CS301", "ML401"]
-    }
-}
-
-FAKE_MODULE_DB = {
-    "CS301": {
-        "code": "CS301",
-        "name": "Advanced Algorithms",
-        "credits": 4,
-        "description": "Advanced data structures and algorithm design techniques",
-        "prerequisites": ["CS201", "CS202"],
-        "available_semesters": ["Fall", "Spring"],
-        "capacity": 50,
-        "instructor": "Dr. Williams",
-        "past_attendance": {
-            "average_rate": 0.85,
-            "trend": "stable"
-        },
-        "past_attentiveness": {
-            "average_rating": 4.2,
-            "engagement_score": 0.78,
-            "difficulty_rating": 4.5
-        },
-        "student_feedback": {
-            "overall_rating": 4.3,
-            "would_recommend": 0.88
-        }
-    },
-    "CS302": {
-        "code": "CS302",
-        "name": "Database Systems",
-        "credits": 4,
-        "description": "Design and implementation of database management systems",
-        "prerequisites": ["CS201"],
-        "available_semesters": ["Fall", "Spring"],
-        "capacity": 45,
-        "instructor": "Dr. Chen",
-        "past_attendance": {
-            "average_rate": 0.92,
-            "trend": "increasing"
-        },
-        "past_attentiveness": {
-            "average_rating": 4.5,
-            "engagement_score": 0.85,
-            "difficulty_rating": 3.8
-        },
-        "student_feedback": {
-            "overall_rating": 4.6,
-            "would_recommend": 0.92
-        }
-    },
-    "ML401": {
-        "code": "ML401",
-        "name": "Machine Learning",
-        "credits": 4,
-        "description": "Introduction to machine learning algorithms and applications",
-        "prerequisites": ["CS201", "MATH201"],
-        "available_semesters": ["Fall", "Spring"],
-        "capacity": 60,
-        "instructor": "Dr. Patel",
-        "past_attendance": {
-            "average_rate": 0.88,
-            "trend": "stable"
-        },
-        "past_attentiveness": {
-            "average_rating": 4.7,
-            "engagement_score": 0.90,
-            "difficulty_rating": 4.8
-        },
-        "student_feedback": {
-            "overall_rating": 4.8,
-            "would_recommend": 0.95
-        }
-    },
-    "DS301": {
-        "code": "DS301",
-        "name": "Data Analytics",
-        "credits": 4,
-        "description": "Statistical analysis and visualization of large datasets",
-        "prerequisites": ["MATH201"],
-        "available_semesters": ["Fall", "Spring"],
-        "capacity": 40,
-        "instructor": "Dr. Garcia",
-        "past_attendance": {
-            "average_rate": 0.90,
-            "trend": "stable"
-        },
-        "past_attentiveness": {
-            "average_rating": 4.4,
-            "engagement_score": 0.82,
-            "difficulty_rating": 4.0
-        },
-        "student_feedback": {
-            "overall_rating": 4.5,
-            "would_recommend": 0.90
-        }
-    },
-    "CS401": {
-        "code": "CS401",
-        "name": "Software Engineering",
-        "credits": 4,
-        "description": "Principles and practices of large-scale software development",
-        "prerequisites": ["CS201", "CS202"],
-        "available_semesters": ["Fall", "Spring"],
-        "capacity": 55,
-        "instructor": "Dr. Thompson",
-        "past_attendance": {
-            "average_rate": 0.87,
-            "trend": "stable"
-        },
-        "past_attentiveness": {
-            "average_rating": 4.3,
-            "engagement_score": 0.80,
-            "difficulty_rating": 4.2
-        },
-        "student_feedback": {
-            "overall_rating": 4.4,
-            "would_recommend": 0.89
-        }
-    }
-}
-
-
-def get_user_information(name: str, year: int, course: str) -> Optional[Dict]:
-    """
-    Retrieve comprehensive user information including profile, grades, and module history.
+def compare_modules(module_names: List[str]) -> str:
+    """Compare effectiveness of multiple modules."""
+    data = load_module_effectiveness()
     
-    Args:
-        name: The student's name
-        year: The student's year of study (1, 2, 3, or 4)
-        course: The student's course/program (e.g., "Computer Science", "Data Science")
-        
-    Returns:
-        Dictionary containing user profile, grades, and module history, or None if user not found
-    """
-    # Find user by matching name and program
-    user_data = None
-    for user in FAKE_USER_DB.values():
-        if user["name"].lower() == name.lower() and user["program"].lower() == course.lower():
-            user_data = user
-            break
-    
-    if not user_data:
-        return None
-    
-    return {
-        "profile": {
-            "id": user_data["id"],
-            "name": user_data["name"],
-            "email": user_data["email"],
-            "year": user_data["year"],
-            "program": user_data["program"],
-            "gpa": user_data["gpa"]
-        },
-        "grades": user_data["grades"],
-        "module_history": user_data["module_history"]
-    }
-
-
-def get_user_grades(name: str, year: int, course: str) -> Optional[Dict]:
-    """
-    Get just the grades for a specific user.
-    
-    Args:
-        name: The student's name
-        year: The student's year of study (1, 2, 3, or 4)
-        course: The student's course/program (e.g., "Computer Science", "Data Science")
-        
-    Returns:
-        Dictionary of grades or None if user not found
-    """
-    # Find user by matching name and program
-    user_data = None
-    for user in FAKE_USER_DB.values():
-        if user["name"].lower() == name.lower() and user["program"].lower() == course.lower():
-            user_data = user
-            break
-    return user_data["grades"] if user_data else None
-
-
-def get_user_profile(name: str, year: int, course: str) -> Optional[Dict]:
-    """
-    Get just the profile information for a specific user.
-    
-    Args:
-        name: The student's name
-        year: The student's year of study (1, 2, 3, or 4)
-        course: The student's course/program (e.g., "Computer Science", "Data Science")
-        
-    Returns:
-        Dictionary of profile information or None if user not found
-    """
-    # Find user by matching name and program
-    user_data = None
-    for user in FAKE_USER_DB.values():
-        if user["name"].lower() == name.lower() and user["program"].lower() == course.lower():
-            user_data = user
-            break
-    
-    if not user_data:
-        return None
-        
-    return {
-        "id": user_data["id"],
-        "name": user_data["name"],
-        "email": user_data["email"],
-        "year": user_data["year"],
-        "program": user_data["program"],
-        "gpa": user_data["gpa"]
-    }
-
-
-def get_user_module_history(name: str, year: int, course: str) -> Optional[List[str]]:
-    """
-    Get the module history for a specific user.
-    
-    Args:
-        name: The student's name
-        year: The student's year of study (1, 2, 3, or 4)
-        course: The student's course/program (e.g., "Computer Science", "Data Science")
-        
-    Returns:
-        List of module codes or None if user not found
-    """
-    # Find user by matching name and program
-    user_data = None
-    for user in FAKE_USER_DB.values():
-        if user["name"].lower() == name.lower() and user["program"].lower() == course.lower():
-            user_data = user
-            break
-    return user_data["module_history"] if user_data else None
-
-
-def get_all_module_choices() -> Dict:
-    """
-    Get all available module choices with comprehensive information.
-    
-    Returns:
-        Dictionary of all modules with their details including:
-        - Basic info (code, name, credits, description)
-        - Prerequisites
-        - Availability
-        - Past attendance statistics
-        - Past attentiveness metrics
-        - Student feedback
-    """
-    return FAKE_MODULE_DB
-
-
-def get_module_info(module_code: str) -> Optional[Dict]:
-    """
-    Get detailed information about a specific module.
-    
-    Args:
-        module_code: The module code (e.g., "CS301")
-        
-    Returns:
-        Dictionary containing module information or None if module not found
-    """
-    return FAKE_MODULE_DB.get(module_code)
-
-
-def get_module_attendance_data(module_code: str) -> Optional[Dict]:
-    """
-    Get attendance statistics for a specific module.
-    
-    Args:
-        module_code: The module code (e.g., "CS301")
-        
-    Returns:
-        Dictionary containing attendance data or None if module not found
-    """
-    module = FAKE_MODULE_DB.get(module_code)
-    return module["past_attendance"] if module else None
-
-
-def get_module_attentiveness_data(module_code: str) -> Optional[Dict]:
-    """
-    Get attentiveness metrics for a specific module.
-    
-    Args:
-        module_code: The module code (e.g., "CS301")
-        
-    Returns:
-        Dictionary containing attentiveness data or None if module not found
-    """
-    module = FAKE_MODULE_DB.get(module_code)
-    return module["past_attentiveness"] if module else None
-
-
-def get_eligible_modules(name: str, year: int, course: str) -> List[Dict]:
-    """
-    Get modules that a user is eligible to take based on their module history.
-    
-    Args:
-        name: The student's name
-        year: The student's year of study (1, 2, 3, or 4)
-        course: The student's course/program (e.g., "Computer Science", "Data Science")
-        
-    Returns:
-        List of eligible modules with their information
-    """
-    # Find user by matching name and program
-    user_data = None
-    for user in FAKE_USER_DB.values():
-        if user["name"].lower() == name.lower() and user["program"].lower() == course.lower():
-            user_data = user
-            break
-    
-    if not user_data:
-        return []
-    
-    completed_modules = set(user_data["module_history"])
-    eligible_modules = []
-    
-    for module_code, module_info in FAKE_MODULE_DB.items():
-        # Check if user has already taken this module
-        if module_code in completed_modules:
-            continue
-            
-        # Check if user meets prerequisites
-        prerequisites = set(module_info.get("prerequisites", []))
-        if prerequisites.issubset(completed_modules):
-            eligible_modules.append({
-                "code": module_code,
-                **module_info
+    comparisons = []
+    for name in module_names:
+        if name in data:
+            info = data[name]
+            comparisons.append({
+                'name': name,
+                'score': info.get('effectiveness_score', 0),
+                'correlation': info.get('pearson_r', 0),
+                'sample_size': info.get('sample_size', 0)
             })
     
-    return eligible_modules
+    if not comparisons:
+        return "No valid modules found for comparison."
+    
+    # Sort by effectiveness score
+    comparisons.sort(key=lambda x: x['score'], reverse=True)
+    
+    result = "\n📊 MODULE COMPARISON\n" + "="*60 + "\n"
+    for i, module in enumerate(comparisons, 1):
+        result += f"\n{i}. {module['name']}\n"
+        result += f"   Effectiveness: {module['score']:.2f}/100\n"
+        result += f"   Correlation: {module['correlation']:.4f}\n"
+        result += f"   Students: {module['sample_size']}\n"
+    
+    return result
 
 
-def search_modules(
-    query: str = None,
-    min_rating: float = None,
-    max_difficulty: float = None,
-    instructor: str = None
-) -> List[Dict]:
-    """
-    Search and filter modules based on various criteria.
+def get_effectiveness_statistics() -> Dict:
+    """Get overall statistics across all modules."""
+    data = load_module_effectiveness()
     
-    Args:
-        query: Search term to match against module name or description
-        min_rating: Minimum overall rating
-        max_difficulty: Maximum difficulty rating
-        instructor: Filter by instructor name
-        
-    Returns:
-        List of modules matching the criteria
-    """
-    results = []
+    scores = [info['effectiveness_score'] for info in data.values() if 'effectiveness_score' in info]
+    correlations = [info['pearson_r'] for info in data.values() if 'pearson_r' in info]
     
-    for module_code, module_info in FAKE_MODULE_DB.items():
-        # Text search
-        if query:
-            query_lower = query.lower()
-            if not (query_lower in module_info["name"].lower() or 
-                   query_lower in module_info["description"].lower()):
-                continue
-        
-        # Rating filter
-        if min_rating and module_info["student_feedback"]["overall_rating"] < min_rating:
-            continue
-            
-        # Difficulty filter
-        if max_difficulty and module_info["past_attentiveness"]["difficulty_rating"] > max_difficulty:
-            continue
-            
-        # Instructor filter
-        if instructor and instructor.lower() not in module_info["instructor"].lower():
-            continue
-        
-        results.append({
-            "code": module_code,
-            **module_info
-        })
+    categories = {}
+    for info in data.values():
+        if 'category' in info:
+            cat = info['category']
+            categories[cat] = categories.get(cat, 0) + 1
     
-    return results
+    return {
+        'total_modules': len(data),
+        'avg_effectiveness': sum(scores) / len(scores) if scores else 0,
+        'median_effectiveness': sorted(scores)[len(scores)//2] if scores else 0,
+        'avg_correlation': sum(correlations) / len(correlations) if correlations else 0,
+        'category_distribution': categories
+    }
+
+
+# Example usage
+if __name__ == "__main__":
+    # Test the functions
+    print("=== All Modules ===")
+    print(get_all_modules())
+    
+    print("\n=== Top 5 Most Effective ===")
+    for name, score in get_top_effective_modules(5):
+        print(f"{name}: {score:.2f}")
+    
+    print("\n=== Module Summary: Mathematical Methods ===")
+    print(get_module_summary("Mathematical Methods"))
+    
+    print("\n=== Overall Statistics ===")
+    stats = get_effectiveness_statistics()
+    print(f"Total Modules: {stats['total_modules']}")
+    print(f"Avg Effectiveness: {stats['avg_effectiveness']:.2f}")
+    print(f"Avg Correlation: {stats['avg_correlation']:.4f}")
+    print(f"Category Distribution: {stats['category_distribution']}")
