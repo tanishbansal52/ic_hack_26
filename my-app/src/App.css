@@ -129,7 +129,11 @@
   font-size: clamp(28px, 5vw, 42px);
   color: white;
   font-weight: 800;
-  text-shadow: \n    0 2px 20px rgba(0, 0, 0, 0.2),\n    0 0 30px rgba(255, 255, 255, 0.3),\n    0 0 60px rgba(139, 92, 246, 0.4);\n  display: flex;
+  text-shadow:
+      0 2px 20px rgba(0, 0, 0, 0.2),
+      0 0 30px rgba(255, 255, 255, 0.3),
+      0 0 60px rgba(139, 92, 246, 0.4);
+  display: flex;
   align-items: center;
   gap: 12px;
   animation: titleGlow 3s ease-in-out infinite alternate;
@@ -137,10 +141,16 @@
 
 @keyframes titleGlow {
   from {
-    text-shadow: \n      0 2px 20px rgba(0, 0, 0, 0.2),\n      0 0 30px rgba(255, 255, 255, 0.3),\n      0 0 60px rgba(139, 92, 246, 0.4);
+    text-shadow: 
+    0 2px 20px rgba(0, 0, 0, 0.2),
+    0 0 30px rgba(255, 255, 255, 0.3),
+    0 0 60px rgba(139, 92, 246, 0.4);
   }
   to {
-    text-shadow: \n      0 2px 20px rgba(0, 0, 0, 0.2),\n      0 0 40px rgba(255, 255, 255, 0.5),\n      0 0 80px rgba(236, 72, 153, 0.5);
+    text-shadow: 
+    0 2px 20px rgba(0, 0, 0, 0.2),
+    0 0 40px rgba(255, 255, 255, 0.5),
+    0 0 80px rgba(236, 72, 153, 0.5);
   }
 }
 
@@ -208,13 +218,18 @@
 
 .toggle-button.module-mode {
   background: rgba(99, 102, 241, 0.25);
-}\n\n.toggle-button.chat-mode {
+}
+
+.toggle-button.chat-mode {
   background: rgba(240, 147, 251, 0.25);
 }
 
 .toggle-button:hover {
   transform: translateY(-3px);
-  box-shadow: \n    0 12px 32px rgba(99, 102, 241, 0.4),\n    inset 0 1px 0 rgba(255, 255, 255, 0.5);\n  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 
+  0 12px 32px rgba(99, 102, 241, 0.4),
+  inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 .toggle-button:active {
@@ -379,10 +394,13 @@
   }
 .modules-grid {
   grid-template-columns: 1fr;
+
+}
   
 
     .context-form {
       grid-template-columns: 1fr;
+    }
   
 }
 
