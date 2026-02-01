@@ -53,48 +53,46 @@ function App() {
         </div>
 
       {/* User Context Form */}
-      {showChat && (
-        <div className="user-context-card">
-          <h3 className="context-title">
-            Your Information
-          </h3>
-          <div className="context-form">
-            <div className="form-field">
-              <label className="field-label">Name</label>
-              <input
-                type="text"
-                value={userContext.name}
-                onChange={(e) => setUserContext({...userContext, name: e.target.value})}
-                placeholder="Enter your name"
-                className="field-input"
-              />
-            </div>
-            <div className="form-field">
-              <label className="field-label">Year</label>
-              <select
-                value={userContext.year}
-                onChange={(e) => setUserContext({...userContext, year: parseInt(e.target.value)})}
-                className="field-select"
-              >
-                <option value={1}>1st Year</option>
-                <option value={2}>2nd Year</option>
-                <option value={3}>3rd Year</option>
-                <option value={4}>4th Year</option>
-              </select>
-            </div>
-            <div className="form-field">
-              <label className="field-label">Course</label>
-              <input
-                type="text"
-                value={userContext.course}
-                onChange={(e) => setUserContext({...userContext, course: e.target.value})}
-                placeholder="e.g., Computer Science"
-                className="field-input"
-              />
-            </div>
+      <div className="user-context-card">
+        <h3 className="context-title">
+          Your Information
+        </h3>
+        <div className="context-form">
+          <div className="form-field">
+            <label className="field-label">Name</label>
+            <input
+              type="text"
+              value={userContext.name}
+              onChange={(e) => setUserContext({...userContext, name: e.target.value})}
+              placeholder="Enter your name"
+              className="field-input"
+            />
+          </div>
+          <div className="form-field">
+            <label className="field-label">Year</label>
+            <select
+              value={userContext.year}
+              onChange={(e) => setUserContext({...userContext, year: parseInt(e.target.value)})}
+              className="field-select"
+            >
+              <option value={1}>1st Year</option>
+              <option value={2}>2nd Year</option>
+              <option value={3}>3rd Year</option>
+              <option value={4}>4th Year</option>
+            </select>
+          </div>
+          <div className="form-field">
+            <label className="field-label">Course</label>
+            <input
+              type="text"
+              value={userContext.course}
+              onChange={(e) => setUserContext({...userContext, course: e.target.value})}
+              placeholder="e.g., Computer Science"
+              className="field-input"
+            />
           </div>
         </div>
-      )}
+      </div>
 
       {/* Conditional Rendering */}
       <div className="main-content">
