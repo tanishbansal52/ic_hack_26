@@ -37,7 +37,15 @@ const ModuleCard = ({ module }) => {
   return (
     <div className="module-card">
       <div className="module-header">
-        <div className="module-icon">📚</div>
+        <div className="module-icon">
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+          }}></div>
+        </div>
         <div className="module-info">
           <div className="module-code">{module.code}</div>
           <h2 className="module-name">{module.name}</h2>
@@ -59,12 +67,10 @@ const ModuleCard = ({ module }) => {
           </>
         ) : showROI ? (
           <>
-            <span>👁️</span>
             <span>Hide ROI Analysis</span>
           </>
         ) : (
           <>
-            <span>📈</span>
             <span>Analyze Attendance ROI</span>
           </>
         )}

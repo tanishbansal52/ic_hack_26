@@ -32,7 +32,6 @@ function App() {
         <div className="header-container">
           <div className="header-text">
             <h1 className="main-title">
-              <span className="title-icon">🎓</span>
               Module Selection Helper
             </h1>
             <p className="subtitle">
@@ -44,7 +43,6 @@ function App() {
             onClick={() => setShowChat(!showChat)}
             className={`toggle-button ${showChat ? 'chat-mode' : 'module-mode'}`}
           >
-            <span className="button-icon">{showChat ? '📊' : '🤖'}</span>
             <span>{showChat ? 'Show Modules' : 'AI Advisor'}</span>
           </button>
         </div>
@@ -53,7 +51,6 @@ function App() {
       {!showChat && (
         <div className="user-context-card">
           <h3 className="context-title">
-            <span className="context-icon">👤</span>
             Your Information
           </h3>
           <div className="context-form">

@@ -7,29 +7,23 @@ const ROIScatterPlot = ({ data, rSquared }) => {
     if (r2 >= 0.7) {
       return {
         text: "High attendance is strongly linked to good grades. Don't skip!",
-        emoji: "🚨",
         title: "CRITICAL",
         color: "#e53e3e",
-        bg: "linear-gradient(135deg, #feb2b2 0%, #fc8181 100%)",
-        icon: "⚠️"
+        bg: "linear-gradient(135deg, #feb2b2 0%, #fc8181 100%)"
       };
     } else if (r2 >= 0.4) {
       return {
         text: "Attendance helps, but self-study is also effective.",
-        emoji: "⚠️",
         title: "MODERATE",
         color: "#dd6b20",
-        bg: "linear-gradient(135deg, #fbd38d 0%, #f6ad55 100%)",
-        icon: "📚"
+        bg: "linear-gradient(135deg, #fbd38d 0%, #f6ad55 100%)"
       };
     } else {
       return {
         text: "Low correlation. You can likely pass by studying the slides.",
-        emoji: "✅",
         title: "RELAXED",
         color: "#38a169",
-        bg: "linear-gradient(135deg, #9ae6b4 0%, #68d391 100%)",
-        icon: "😎"
+        bg: "linear-gradient(135deg, #9ae6b4 0%, #68d391 100%)"
       };
     }
   };
@@ -91,7 +85,6 @@ const ROIScatterPlot = ({ data, rSquared }) => {
         justifyContent: 'center',
         gap: '10px'
       }}>
-        <span style={{ fontSize: '28px' }}>📊</span>
         Attendance ROI Analysis
       </h3>
 
@@ -101,7 +94,7 @@ const ROIScatterPlot = ({ data, rSquared }) => {
         fontSize: '14px',
         marginBottom: '20px'
       }}>
-        R² = {rSquared.toFixed(2)} • {advice.icon} {advice.title}
+        R² = {rSquared.toFixed(2)} • {advice.title}
       </p>
 
       <div style={{ 
@@ -124,7 +117,6 @@ const ROIScatterPlot = ({ data, rSquared }) => {
         justifyContent: 'center',
         gap: '12px'
       }}>
-        <span style={{ fontSize: '24px' }}>{advice.emoji}</span>
         <span>{advice.text}</span>
       </div>
 
@@ -213,7 +205,7 @@ const ROIScatterPlot = ({ data, rSquared }) => {
           '0 4px 12px rgba(99, 102, 241, 0.1), ' +
           'inset 0 1px 0 rgba(255, 255, 255, 0.5)'
       }}>
-        <strong>💡 How to read this:</strong> Each dot represents a student. The higher the R² value (closer to 1.0), 
+        <strong>How to read this:</strong> Each dot represents a student. The higher the R² value (closer to 1.0), 
         the stronger the correlation between attendance and grades. A high R² means attendance really matters for this module!
       </div>
     </div>

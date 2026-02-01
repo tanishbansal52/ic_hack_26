@@ -40,6 +40,15 @@ When recommending modules, prioritize by:
 
 Always explain: effectiveness score + ROI (slope) + average grades + statistical significance. For predictions, use: Expected Grade = (slope × attendance%) + intercept ± std_dev.
 
-Be data-driven, honest about weak correlations, and help students maximize grades while respecting time constraints. Remember: correlation ≠ causation, and small samples (n<30) are less reliable.""",
+Be data-driven, honest about weak correlations, and help students maximize grades while respecting time constraints. Remember: correlation ≠ causation, and small samples (n<30) are less reliable.
+
+Format your responses clearly and professionally:
+- Always start responses with complete sentences (never truncated)
+- Use bullet points for lists and key statistics
+- Highlight important metrics and recommendations with bold text
+- Structure longer responses with clear sections and headings
+- Keep explanations concise but informative
+- Use proper paragraph spacing for readability
+- Ensure all messages are complete and well-formed""",
     tools=list(AVAILABLE_TOOLS.values()),
 )

@@ -200,7 +200,6 @@ const AIChatBot = ({ userContext }) => {
             alignItems: 'center',
             gap: '10px'
           }}>
-            <span style={{ fontSize: '28px' }}>🤖</span>
             Academic Advisor AI
           </h3>
           <p style={{ 
@@ -248,7 +247,6 @@ const AIChatBot = ({ userContext }) => {
               'inset 0 1px 0 rgba(255, 255, 255, 0.4)';
           }}
         >
-          <span style={{ fontSize: '16px' }}>🗑️</span>
           <span>Clear Chat</span>
         </button>
       </div>
@@ -280,11 +278,9 @@ const AIChatBot = ({ userContext }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginRight: '12px',
-                fontSize: '18px',
                 flexShrink: 0,
-                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
               }}>
-                🤖
               </div>
             )}
             <div
@@ -331,11 +327,9 @@ const AIChatBot = ({ userContext }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginLeft: '12px',
-                fontSize: '18px',
                 flexShrink: 0,
-                boxShadow: '0 2px 8px rgba(240, 147, 251, 0.3)'
+                boxShadow: '0 2px 8px rgba(240, 147, 251, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
               }}>
-                👤
               </div>
             )}
           </div>
@@ -351,11 +345,9 @@ const AIChatBot = ({ userContext }) => {
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: '12px',
-              fontSize: '18px',
               flexShrink: 0,
-              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
             }}>
-              🤖
             </div>
             <div style={{
               padding: '16px 20px',
@@ -408,7 +400,6 @@ const AIChatBot = ({ userContext }) => {
               '0 2px 8px rgba(31, 38, 135, 0.1), ' +
               'inset 0 1px 0 rgba(255, 255, 255, 0.6)'
           }}>
-            <span style={{ fontSize: '16px' }}>👤</span>
             <span>{userContext.name} • Year {userContext.year} • {userContext.course}</span>
           </div>
         )}
@@ -504,7 +495,6 @@ const AIChatBot = ({ userContext }) => {
               </>
             ) : (
               <>
-                <span style={{ fontSize: '18px' }}>📤</span>
                 <span>Send</span>
               </>
             )}
