@@ -5,6 +5,8 @@ import sqlite3
 
 from ultralytics import YOLO
 from insightface.app import FaceAnalysis
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision as mp_vision
 import mediapipe as mp
 
 
@@ -256,14 +258,17 @@ def main():
     face_app = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
     face_app.prepare(ctx_id=-1, det_size=FACE_DET_SIZE)
 
-    mp_face_mesh = mp.solutions.face_mesh
-    face_mesh = mp_face_mesh.FaceMesh(
-        static_image_mode=False,
-        max_num_faces=10,
-        refine_landmarks=False,
-        min_detection_confidence=0.3,
-        min_tracking_confidence=0.3,
+    # MediaPipe Face Landmarker with new API
+    base_options = python.BaseOptions(model_asset_path='face_landmarker.task')
+    options = mp_vision.FaceLandmarkerOptions(
+        base_options=base_options,
+        running_mode=mp_vision.RunningMode.VIDEO,
+        num_faces=10,
+        min_face_detection_confidence=0.3,
+        min_face_presence_confidence=0.3,
+        min_tracking_confidence=0.3
     )
+    face_mesh = mp_vision.FaceLandmarker.create_from_options(options)
 
     # Attention state (timers need stable identity)
     # state[pid] = {"closed_since": float|None}
@@ -308,17 +313,18 @@ def main():
                 if bbox_area_xyxy((fx1, fy1, fx2, fy2)) < MIN_FACE_AREA:
                     continue
                 if_faces.append({"bbox": (fx1, fy1, fx2, fy2), "emb": f.embedding})
-
+            
             # ----------------------
             # MediaPipe landmarks
             # ----------------------
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            res = face_mesh.process(rgb)
-
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+            res = face_mesh.detect_for_video(mp_image, int(now * 1000))
+            
             mp_faces = []
-            if res.multi_face_landmarks:
-                for fm in res.multi_face_landmarks:
-                    pts = np.array([(lm.x * W, lm.y * H) for lm in fm.landmark], dtype=np.float32)
+            if res.face_landmarks:
+                for fm in res.face_landmarks:
+                    pts = np.array([(lm.x * W, lm.y * H) for lm in fm], dtype=np.float32)
                     x1 = int(np.clip(np.min(pts[:, 0]), 0, W - 1))
                     y1 = int(np.clip(np.min(pts[:, 1]), 0, H - 1))
                     x2 = int(np.clip(np.max(pts[:, 0]), 0, W - 1))
